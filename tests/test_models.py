@@ -1,7 +1,7 @@
 """Tests for OSI Pydantic models."""
 import pytest
 from pydantic import ValidationError
-from osi.models import AIContext, CustomExtension, DialectDef, FieldExpression, DimensionMeta
+from osi.models import AIContext, CustomExtension, DialectDef, Field, FieldExpression, DimensionMeta
 from osi.enums import Dialect, Vendor
 
 
@@ -109,3 +109,76 @@ class TestCustomExtension:
     def test_missing_data(self):
         with pytest.raises(ValidationError):
             CustomExtension.model_validate({"vendor_name": "SNOWFLAKE"})
+
+
+class TestField:
+    def test_minimal_valid_field(self):
+        field = Field.model_validate({
+            "name": "customer_id",
+            "expression": {
+                "dialects": [{"dialect": "ANSI_SQL", "expression": "customer_id"}]
+            }
+        })
+        assert field.name == "customer_id"
+        assert field.expression.dialects[0].expression == "customer_id"
+        assert field.dimension is None
+        assert field.label is None
+        assert field.description is None
+        assert field.ai_context is None
+        assert field.custom_extensions == []
+
+    def test_field_with_dimension(self):
+        field = Field.model_validate({
+            "name": "order_date",
+            "expression": {
+                "dialects": [{"dialect": "ANSI_SQL", "expression": "order_date"}]
+            },
+            "dimension": {"is_time": True},
+        })
+        assert field.dimension is not None
+        assert field.dimension.is_time is True
+
+    def test_field_with_ai_context_string(self):
+        field = Field.model_validate({
+            "name": "revenue",
+            "expression": {
+                "dialects": [{"dialect": "ANSI_SQL", "expression": "amount"}]
+            },
+            "ai_context": "revenue field for reporting",
+        })
+        assert field.ai_context is not None
+        assert field.ai_context.instructions == "revenue field for reporting"
+
+    def test_field_with_ai_context_dict(self):
+        field = Field.model_validate({
+            "name": "revenue",
+            "expression": {
+                "dialects": [{"dialect": "ANSI_SQL", "expression": "amount"}]
+            },
+            "ai_context": {
+                "synonyms": ["income", "sales"],
+            },
+        })
+        assert field.ai_context.synonyms == ["income", "sales"]
+
+    def test_field_missing_name(self):
+        with pytest.raises(ValidationError):
+            Field.model_validate({
+                "expression": {
+                    "dialects": [{"dialect": "ANSI_SQL", "expression": "col"}]
+                }
+            })
+
+    def test_field_missing_expression(self):
+        with pytest.raises(ValidationError):
+            Field.model_validate({"name": "test"})
+
+    def test_field_extra_fields_rejected(self):
+        with pytest.raises(ValidationError):
+            Field.model_validate({
+                "name": "test",
+                "expression": {
+                    "dialects": [{"dialect": "ANSI_SQL", "expression": "col"}]
+                },
+                "unkown_fild": 42,
+            })

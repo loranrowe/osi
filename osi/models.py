@@ -45,3 +45,23 @@ class CustomExtension(BaseModel):
     model_config = {"extra": "forbid"}
     vendor_name: Vendor
     data: str
+
+
+class Field(BaseModel):
+    model_config = {"extra": "forbid"}
+    name: str
+    expression: FieldExpression
+    dimension: DimensionMeta | None = None
+    label: str | None = None
+    description: str | None = None
+    ai_context: AIContext | str | None = None
+    custom_extensions: list[CustomExtension] = []
+
+    @field_validator("ai_context", mode="before")
+    @classmethod
+    def _normalize_ai_context(cls, v):
+        if v is None or isinstance(v, AIContext):
+            return v
+        if isinstance(v, str):
+            return AIContext(instructions=v)
+        return v
