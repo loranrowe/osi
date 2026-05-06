@@ -1,6 +1,0 @@
-pyproject.toml
-osi_parser.egg-info/PKG-INFO
-osi_parser.egg-info/SOURCES.txt
-osi_parser.egg-info/dependency_links.txt
-osi_parser.egg-info/requires.txt
-osi_parser.egg-info/top_level.txt
