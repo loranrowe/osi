@@ -1,5 +1,5 @@
 """OSI Pydantic models — typed representations of OSI semantic model entities."""
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field as PydanticField, field_validator, model_validator
 
 from .enums import Dialect, Vendor
 
@@ -86,3 +86,32 @@ class Dataset(BaseModel):
         if isinstance(v, str):
             return AIContext(instructions=v)
         return v
+
+
+class Relationship(BaseModel):
+    model_config = {"extra": "forbid"}
+    name: str
+    from_: str = PydanticField(alias="from")
+    to: str
+    from_columns: list[str]
+    to_columns: list[str]
+    ai_context: AIContext | str | None = None
+    custom_extensions: list[CustomExtension] = []
+
+    @field_validator("ai_context", mode="before")
+    @classmethod
+    def _normalize_ai_context(cls, v):
+        if v is None or isinstance(v, AIContext):
+            return v
+        if isinstance(v, str):
+            return AIContext(instructions=v)
+        return v
+
+    @model_validator(mode="after")
+    def _check_column_count(self):
+        if len(self.from_columns) != len(self.to_columns):
+            raise ValueError(
+                f"from_columns and to_columns must have same length, "
+                f"got {len(self.from_columns)} and {len(self.to_columns)}"
+            )
+        return self

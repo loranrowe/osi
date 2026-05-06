@@ -1,7 +1,7 @@
 """Tests for OSI Pydantic models."""
 import pytest
 from pydantic import ValidationError
-from osi.models import AIContext, CustomExtension, Dataset, DialectDef, Field, FieldExpression, DimensionMeta
+from osi.models import AIContext, CustomExtension, Dataset, DialectDef, Field, FieldExpression, DimensionMeta, Relationship
 from osi.enums import Dialect, Vendor
 
 
@@ -211,3 +211,40 @@ class TestDataset:
 
     def test_dataset_missing_source(self):
         with pytest.raises(ValidationError): Dataset.model_validate({"name": "orders"})
+
+
+class TestRelationship:
+    def test_minimal_valid_relationship(self):
+        rel = Relationship.model_validate({
+            "name": "orders_to_customers", "from": "orders", "to": "customers",
+            "from_columns": ["customer_id"], "to_columns": ["id"],
+        })
+        assert rel.name == "orders_to_customers"; assert rel.from_ == "orders"
+        assert rel.to == "customers"
+        assert rel.from_columns == ["customer_id"]; assert rel.to_columns == ["id"]
+
+    def test_composite_relationship(self):
+        rel = Relationship.model_validate({
+            "name": "order_lines_to_products", "from": "order_lines", "to": "products",
+            "from_columns": ["product_id", "variant_id"], "to_columns": ["id", "variant_id"],
+        })
+        assert len(rel.from_columns) == 2; assert len(rel.to_columns) == 2
+
+    def test_column_count_mismatch_raises(self):
+        with pytest.raises(ValidationError):
+            Relationship.model_validate({
+                "name": "bad_rel", "from": "orders", "to": "customers",
+                "from_columns": ["col1", "col2"], "to_columns": ["col1"],
+            })
+
+    def test_missing_from_columns(self):
+        with pytest.raises(ValidationError):
+            Relationship.model_validate({"name": "rel", "from": "a", "to": "b", "to_columns": ["col1"]})
+
+    def test_relationship_ai_context(self):
+        rel = Relationship.model_validate({
+            "name": "r1", "from": "orders", "to": "customers",
+            "from_columns": ["x"], "to_columns": ["y"],
+            "ai_context": "joins order to customer",
+        })
+        assert rel.ai_context.instructions == "joins order to customer"
