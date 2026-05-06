@@ -1,7 +1,7 @@
 """Tests for OSI Pydantic models."""
 import pytest
 from pydantic import ValidationError
-from osi.models import AIContext, CustomExtension, DialectDef, Field, FieldExpression, DimensionMeta
+from osi.models import AIContext, CustomExtension, Dataset, DialectDef, Field, FieldExpression, DimensionMeta
 from osi.enums import Dialect, Vendor
 
 
@@ -182,3 +182,32 @@ class TestField:
                 },
                 "unkown_fild": 42,
             })
+
+
+class TestDataset:
+    def test_minimal_valid_dataset(self):
+        ds = Dataset.model_validate({"name": "orders", "source": "sales.public.orders"})
+        assert ds.name == "orders"; assert ds.source == "sales.public.orders"
+        assert ds.primary_key == []; assert ds.unique_keys == []; assert ds.fields == []
+
+    def test_dataset_with_primary_key(self):
+        ds = Dataset.model_validate({"name": "orders", "source": "sales.orders", "primary_key": ["order_id"]})
+        assert ds.primary_key == ["order_id"]
+
+    def test_dataset_with_composite_primary_key(self):
+        ds = Dataset.model_validate({"name": "order_lines", "source": "sales.order_lines", "primary_key": ["order_id", "line_number"]})
+        assert ds.primary_key == ["order_id", "line_number"]
+
+    def test_dataset_with_unique_keys(self):
+        ds = Dataset.model_validate({"name": "customers", "source": "sales.customers", "unique_keys": [["email"], ["first_name", "last_name"]]})
+        assert ds.unique_keys == [["email"], ["first_name", "last_name"]]
+
+    def test_dataset_with_fields(self):
+        ds = Dataset.model_validate({"name": "orders", "source": "sales.orders", "fields": [{"name": "order_id", "expression": {"dialects": [{"dialect": "ANSI_SQL", "expression": "order_id"}]}}]})
+        assert len(ds.fields) == 1; assert ds.fields[0].name == "order_id"
+
+    def test_dataset_missing_name(self):
+        with pytest.raises(ValidationError): Dataset.model_validate({"source": "sales.orders"})
+
+    def test_dataset_missing_source(self):
+        with pytest.raises(ValidationError): Dataset.model_validate({"name": "orders"})
