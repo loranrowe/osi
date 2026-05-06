@@ -1,0 +1,98 @@
+<h2>Core Models Detail — 关键设计决策</h2>
+<p class="subtitle">每层模型的字段设计和校验规则</p>
+
+<div class="section">
+  <h3>1. 辅助模型（叶子节点）</h3>
+  <div style="font-family: monospace; font-size: 13px; line-height: 1.8;">
+    <div style="background: rgba(137,180,250,0.08); padding: 10px 14px; border-radius: 4px; margin-bottom: 8px;">
+      <div style="color: #89b4fa; font-weight: 600;">DialectDef</div>
+      <div style="color: #a6adc1;">dialect: <span style="color: #f9e2af;">Dialect</span> (enum: ANSI_SQL|SNOWFLAKE|DATABRICKS|MDX|TABLEAU)</div>
+      <div style="color: #a6adc1;">expression: <span style="color: #f9e2af;">str</span> (SQL表达式)</div>
+    </div>
+    <div style="background: rgba(166,227,161,0.08); padding: 10px 14px; border-radius: 4px; margin-bottom: 8px;">
+      <div style="color: #a6e3a1; font-weight: 600;">DimensionMeta</div>
+      <div style="color: #a6adc1;">is_time: <span style="color: #f9e2af;">bool</span> = False</div>
+    </div>
+    <div style="background: rgba(249,226,175,0.08); padding: 10px 14px; border-radius: 4px; margin-bottom: 8px;">
+      <div style="color: #f9e2af; font-weight: 600;">AIContext</div>
+      <div style="color: #a6adc1;">instructions: <span style="color: #f9e2af;">str | None</span></div>
+      <div style="color: #a6adc1;">synonyms: <span style="color: #f9e2af;">list[str]</span> = []</div>
+      <div style="color: #a6adc1;">examples: <span style="color: #f9e2af;">list[str]</span> = []</div>
+    </div>
+    <div style="background: rgba(250,179,135,0.08); padding: 10px 14px; border-radius: 4px;">
+      <div style="color: #fab387; font-weight: 600;">CustomExtension</div>
+      <div style="color: #a6adc1;">vendor_name: <span style="color: #f9e2af;">Vendor</span> (enum: COMMON|SNOWFLAKE|SALESFORCE|DBT|DATABRICKS)</div>
+      <div style="color: #a6adc1;">data: <span style="color: #f9e2af;">str</span> (JSON字符串，暂不解析)</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>2. 核心业务模型</h3>
+  <div style="font-family: monospace; font-size: 13px; line-height: 1.8;">
+    <div style="background: rgba(203,166,247,0.08); padding: 10px 14px; border-radius: 4px; margin-bottom: 8px;">
+      <div style="color: #cba6f7; font-weight: 600; font-size: 14px;">Field</div>
+      <div style="color: #a6adc1;">name: <span style="color: #f9e2af;">str</span> ★必填</div>
+      <div style="color: #a6adc1;">expression: <span style="color: #f9e2af;">FieldExpression</span> ★必填</div>
+      <div style="color: #a6adc1;">dimension: <span style="color: #f9e2af;">DimensionMeta | None</span></div>
+      <div style="color: #a6adc1;">label / description / ai_context / custom_extensions</div>
+    </div>
+    <div style="background: rgba(137,180,250,0.08); padding: 10px 14px; border-radius: 4px; margin-bottom: 8px;">
+      <div style="color: #89b4fa; font-weight: 600; font-size: 14px;">Dataset</div>
+      <div style="color: #a6adc1;">name: <span style="color: #f9e2af;">str</span> ★ | source: <span style="color: #f9e2af;">str</span> ★</div>
+      <div style="color: #a6adc1;">primary_key: <span style="color: #f9e2af;">list[str]</span> = []</div>
+      <div style="color: #a6adc1;">unique_keys: <span style="color: #f9e2af;">list[list[str]]</span> = []</div>
+      <div style="color: #a6adc1;">fields: <span style="color: #f9e2af;">list[Field]</span> = []</div>
+      <div style="color: #a6adc1;">description / ai_context / custom_extensions</div>
+    </div>
+    <div style="background: rgba(166,227,161,0.08); padding: 10px 14px; border-radius: 4px; margin-bottom: 8px;">
+      <div style="color: #a6e3a1; font-weight: 600; font-size: 14px;">Relationship</div>
+      <div style="color: #a6adc1;">name / from / to: <span style="color: #f9e2af;">str</span> ★必填</div>
+      <div style="color: #a6adc1;">from_columns / to_columns: <span style="color: #f9e2af;">list[str]</span> ★必填</div>
+      <div style="color: #fac898;"><strong>⚡ 校验:</strong> len(from_columns) == len(to_columns)</div>
+    </div>
+    <div style="background: rgba(249,226,175,0.08); padding: 10px 14px; border-radius: 4px;">
+      <div style="color: #f9e2af; font-weight: 600; font-size: 14px;">Metric</div>
+      <div style="color: #a6adc1;">name: <span style="color: #f9e2af;">str</span> ★ | expression: <span style="color: #f9e2af;">FieldExpression</span> ★</div>
+      <div style="color: #a6adc1;">description / ai_context / custom_extensions</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>3. 顶层容器</h3>
+  <div style="font-family: monospace; font-size: 13px; line-height: 1.8;">
+    <div style="background: rgba(180,190,254,0.1); padding: 10px 14px; border-radius: 4px; border: 1px solid rgba(180,190,254,0.3);">
+      <div style="color: #b4befe; font-weight: 600; font-size: 14px;">SemanticModel</div>
+      <div style="color: #a6adc1;">name: <span style="color: #f9e2af;">str</span> ★ | datasets: <span style="color: #f9e2af;">list[Dataset]</span> ★</div>
+      <div style="color: #a6adc1;">description / ai_context</div>
+      <div style="color: #a6adc1;">relationships: <span style="color: #f9e2af;">list[Relationship]</span> = []</div>
+      <div style="color: #a6adc1;">metrics: <span style="color: #f9e2af;">list[Metric]</span> = []</div>
+    </div>
+    <div style="margin-top: 8px; font-size: 12px; color: #6c7086;">
+      ⚡ 额外的 model_validator: 检查 relationship.from/to 引用的 dataset 是否存在
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>特殊处理点</h3>
+  <table style="width: 100%; border-collapse: collapse; color: #a6adc1; font-size: 13px;">
+    <tr style="border-bottom: 1px solid #313244;">
+      <td style="padding: 8px; font-weight: 600; color: #cba6f7;">ai_context 双类型</td>
+      <td style="padding: 8px;">字段接受 <span style="color: #f9e2af;">str | dict | None</span>，使用 <code>field_validator</code> 统一转为 AIContext 对象</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #313244;">
+      <td style="padding: 8px; font-weight: 600; color: #cba6f7;">expression 数组兼容</td>
+      <td style="padding: 8px;">Metric 的 expression 在 spec 示例中有时是数组有时是对象，parser 层做归一化</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #313244;">
+      <td style="padding: 8px; font-weight: 600; color: #cba6f7;">custom_extensions.data</td>
+      <td style="padding: 8px;">保持为 JSON 字符串，不做解析。提供 <code>.parsed_data</code> property 按需解析</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; font-weight: 600; color: #cba6f7;">model_config</td>
+      <td style="padding: 8px;"><code>extra="forbid"</code> — 严格模式，未知字段报错，避免拼写错误悄悄被忽略</td>
+    </tr>
+  </table>
+</div>

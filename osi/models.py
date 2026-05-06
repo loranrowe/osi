@@ -1,4 +1,7 @@
 """OSI Pydantic models — typed representations of OSI semantic model entities."""
+from __future__ import annotations
+from typing import Any
+
 from pydantic import BaseModel, Field as PydanticField, field_validator, model_validator
 
 from .enums import Dialect, Vendor
@@ -28,12 +31,12 @@ class AIContext(BaseModel):
 
     @field_validator("synonyms", "examples", mode="before")
     @classmethod
-    def _default_empty_list(cls, v):
+    def _default_empty_list(cls, v: Any) -> Any:
         return v or []
 
     @model_validator(mode="wrap")
     @classmethod
-    def _wrap_string_or_none(cls, data, handler):
+    def _wrap_string_or_none(cls, data: Any, handler: Any) -> Any:
         if isinstance(data, str):
             data = {"instructions": data}
         if data is None:
@@ -59,7 +62,7 @@ class Field(BaseModel):
 
     @field_validator("ai_context", mode="before")
     @classmethod
-    def _normalize_ai_context(cls, v):
+    def _normalize_ai_context(cls, v: Any) -> Any:
         if v is None or isinstance(v, AIContext):
             return v
         if isinstance(v, str):
@@ -80,7 +83,7 @@ class Dataset(BaseModel):
 
     @field_validator("ai_context", mode="before")
     @classmethod
-    def _normalize_ai_context(cls, v):
+    def _normalize_ai_context(cls, v: Any) -> Any:
         if v is None or isinstance(v, AIContext):
             return v
         if isinstance(v, str):
@@ -98,7 +101,7 @@ class Metric(BaseModel):
 
     @field_validator("ai_context", mode="before")
     @classmethod
-    def _normalize_ai_context(cls, v):
+    def _normalize_ai_context(cls, v: Any) -> Any:
         if v is None or isinstance(v, AIContext):
             return v
         if isinstance(v, str):
@@ -118,7 +121,7 @@ class Relationship(BaseModel):
 
     @field_validator("ai_context", mode="before")
     @classmethod
-    def _normalize_ai_context(cls, v):
+    def _normalize_ai_context(cls, v: Any) -> Any:
         if v is None or isinstance(v, AIContext):
             return v
         if isinstance(v, str):
@@ -126,7 +129,7 @@ class Relationship(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _check_column_count(self):
+    def _check_column_count(self: Any) -> Any:
         if len(self.from_columns) != len(self.to_columns):
             raise ValueError(
                 f"from_columns and to_columns must have same length, "
@@ -147,7 +150,7 @@ class SemanticModel(BaseModel):
 
     @field_validator("ai_context", mode="before")
     @classmethod
-    def _normalize_ai_context(cls, v):
+    def _normalize_ai_context(cls, v: Any) -> Any:
         if v is None or isinstance(v, AIContext):
             return v
         if isinstance(v, str):
@@ -155,7 +158,7 @@ class SemanticModel(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _check_referential_integrity(self):
+    def _check_referential_integrity(self: Any) -> Any:
         dataset_names = {d.name for d in self.datasets}
         for rel in self.relationships:
             if rel.from_ not in dataset_names:
