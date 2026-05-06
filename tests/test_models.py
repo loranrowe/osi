@@ -1,7 +1,7 @@
 """Tests for OSI Pydantic models."""
 import pytest
 from pydantic import ValidationError
-from osi.models import AIContext, CustomExtension, Dataset, DialectDef, Field, FieldExpression, DimensionMeta, Relationship
+from osi.models import AIContext, CustomExtension, Dataset, DialectDef, Field, FieldExpression, DimensionMeta, Metric, Relationship
 from osi.enums import Dialect, Vendor
 
 
@@ -248,3 +248,31 @@ class TestRelationship:
             "ai_context": "joins order to customer",
         })
         assert rel.ai_context.instructions == "joins order to customer"
+
+
+class TestMetric:
+    def test_minimal_valid_metric(self):
+        m = Metric.model_validate({
+            "name": "total_revenue",
+            "expression": {"dialects": [{"dialect": "ANSI_SQL", "expression": "SUM(orders.amount)"}]}
+        })
+        assert m.name == "total_revenue"
+        assert m.expression.dialects[0].expression == "SUM(orders.amount)"
+
+    def test_metric_with_description_and_synonyms(self):
+        m = Metric.model_validate({
+            "name": "total_revenue",
+            "expression": {"dialects": [{"dialect": "ANSI_SQL", "expression": "SUM(orders.amount)"}]},
+            "description": "Total revenue across all orders",
+            "ai_context": {"synonyms": ["total sales", "revenue"]},
+        })
+        assert m.description == "Total revenue across all orders"
+        assert m.ai_context.synonyms == ["total sales", "revenue"]
+
+    def test_metric_missing_name(self):
+        with pytest.raises(ValidationError):
+            Metric.model_validate({"expression": {"dialects": [{"dialect": "ANSI_SQL", "expression": "SUM(x)"}]}})
+
+    def test_metric_missing_expression(self):
+        with pytest.raises(ValidationError):
+            Metric.model_validate({"name": "test_metric"})
