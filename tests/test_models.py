@@ -1,7 +1,7 @@
 """Tests for OSI Pydantic models."""
 import pytest
 from pydantic import ValidationError
-from osi.models import AIContext, CustomExtension, Dataset, DialectDef, Field, FieldExpression, DimensionMeta, Metric, Relationship
+from osi.models import AIContext, CustomExtension, Dataset, DialectDef, Field, FieldExpression, DimensionMeta, Metric, Relationship, SemanticModel, OSIDocument
 from osi.enums import Dialect, Vendor
 
 
@@ -276,3 +276,84 @@ class TestMetric:
     def test_metric_missing_expression(self):
         with pytest.raises(ValidationError):
             Metric.model_validate({"name": "test_metric"})
+
+
+class TestSemanticModel:
+    def test_minimal_valid_model(self):
+        sm = SemanticModel.model_validate({
+            "name": "sales_analytics",
+            "datasets": [{"name": "orders", "source": "sales.orders"}],
+        })
+        assert sm.name == "sales_analytics"
+        assert len(sm.datasets) == 1
+        assert sm.relationships == []
+        assert sm.metrics == []
+
+    def test_full_model(self):
+        sm = SemanticModel.model_validate({
+            "name": "ecommerce",
+            "description": "E-commerce analytics",
+            "ai_context": "use for sales analysis",
+            "datasets": [
+                {"name": "orders", "source": "sales.orders",
+                 "fields": [{"name": "order_id", "expression": {"dialects": [{"dialect": "ANSI_SQL", "expression": "order_id"}]}}]},
+                {"name": "customers", "source": "sales.customers",
+                 "fields": [{"name": "id", "expression": {"dialects": [{"dialect": "ANSI_SQL", "expression": "id"}]}}]},
+            ],
+            "relationships": [
+                {"name": "orders_to_customers", "from": "orders", "to": "customers",
+                 "from_columns": ["customer_id"], "to_columns": ["id"]},
+            ],
+            "metrics": [
+                {"name": "total_revenue",
+                 "expression": {"dialects": [{"dialect": "ANSI_SQL", "expression": "SUM(orders.amount)"}]}},
+            ],
+        })
+        assert len(sm.relationships) == 1
+        assert len(sm.metrics) == 1
+
+    def test_referential_integrity_bad_from(self):
+        with pytest.raises(ValidationError):
+            SemanticModel.model_validate({
+                "name": "test",
+                "datasets": [{"name": "orders", "source": "sales.orders"}],
+                "relationships": [{"name": "bad", "from": "nonexistent", "to": "orders",
+                                   "from_columns": ["x"], "to_columns": ["y"]}],
+            })
+
+    def test_referential_integrity_bad_to(self):
+        with pytest.raises(ValidationError):
+            SemanticModel.model_validate({
+                "name": "test",
+                "datasets": [{"name": "orders", "source": "sales.orders"}],
+                "relationships": [{"name": "bad", "from": "orders", "to": "nonexistent",
+                                   "from_columns": ["x"], "to_columns": ["y"]}],
+            })
+
+    def test_missing_datasets(self):
+        with pytest.raises(ValidationError):
+            SemanticModel.model_validate({"name": "test"})
+
+    def test_with_custom_extensions(self):
+        sm = SemanticModel.model_validate({
+            "name": "test",
+            "datasets": [{"name": "orders", "source": "sales.orders"}],
+            "custom_extensions": [{"vendor_name": "SNOWFLAKE", "data": '{"warehouse": "ANALYTICS_WH"}'}],
+        })
+        assert len(sm.custom_extensions) == 1
+        assert sm.custom_extensions[0].vendor_name == "SNOWFLAKE"
+
+
+class TestOSIDocument:
+    def test_wraps_models(self):
+        sm = SemanticModel.model_validate({
+            "name": "test",
+            "datasets": [{"name": "orders", "source": "sales.orders"}],
+        })
+        doc = OSIDocument(models=[sm])
+        assert len(doc.models) == 1
+        assert doc.models[0].name == "test"
+
+    def test_empty_models(self):
+        doc = OSIDocument(models=[])
+        assert doc.models == []
