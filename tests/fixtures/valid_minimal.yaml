@@ -1,0 +1,6 @@
+semantic_model:
+  - name: test_model
+    description: A minimal test model
+    datasets:
+      - name: orders
+        source: sales.orders
